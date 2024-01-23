@@ -1,6 +1,6 @@
 use std::time::Instant;
 
-struct TimeIt {
+pub struct TimeIt {
     name: String,
     start_time: Instant,
 }
@@ -13,10 +13,7 @@ impl TimeIt {
             start_time: Instant::now(),
         }
     }
-}
-
-impl Drop for TimeIt {
-    fn drop(&mut self) {
+    pub fn end(self) {
         let elapsed = self.start_time.elapsed();
         println!("Timer '{}' ran for: {:?}", self.name, elapsed);
     }

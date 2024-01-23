@@ -4,7 +4,9 @@ pub struct HttpVersion(String);
 
 impl Default for HttpVersion {
     fn default() -> Self {
-        HttpVersion { 0: "HTTP/1.1".to_string() }
+        HttpVersion {
+            0: "HTTP/1.1".to_string(),
+        }
     }
 }
 
@@ -39,6 +41,10 @@ pub struct HttpResponse {
 impl Display for HttpResponse {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let status: usize = (&self.status).into();
-        write!(f, "{} {} {}\r\n{}\r\n\r\n{}", self.version, status, self.reason_phrase, self.header, self.body)
+        write!(
+            f,
+            "{} {} {}\r\n{}\r\n\r\n{}",
+            self.version, status, self.reason_phrase, self.header, self.body
+        )
     }
 }
