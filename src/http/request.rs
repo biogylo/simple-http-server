@@ -1,3 +1,4 @@
+use std::ffi::OsString;
 use std::fmt::{Debug, Formatter};
 
 use anyhow::{Context, Result};
@@ -7,7 +8,7 @@ use crate::http::methods::RequestMethod;
 
 pub struct HttpRequest {
     pub method: RequestMethod,
-    pub uri: String,
+    pub uri: OsString,
     body: Vec<String>,
 }
 
@@ -25,7 +26,7 @@ impl TryFrom<Vec<String>> for HttpRequest {
         let body = body_tokens.to_vec();
         Ok(HttpRequest {
             method,
-            uri: uri.to_string(),
+            uri: uri.into(),
             body,
         })
     }

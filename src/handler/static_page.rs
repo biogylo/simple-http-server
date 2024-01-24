@@ -1,21 +1,23 @@
-use crate::handler::Handler;
+use std::fs;
+use std::path::PathBuf;
+
+use crate::handler::handler::Handler;
 use crate::http::methods::RequestMethod::GET;
 use crate::http::request::HttpRequest;
 use crate::http::response::{HttpResponse, HttpStatusCode};
-use std::fs;
-use std::path::PathBuf;
 
 pub struct StaticPageHandler {
     page: String,
 }
 
 impl StaticPageHandler {
-    pub fn new(filepath: PathBuf) -> StaticPageHandler {
+    pub const fn new(page_html_string: String) -> StaticPageHandler {
         StaticPageHandler {
-            page: fs::read_to_string(filepath).unwrap(),
+            page: page_html_string,
         }
     }
 }
+
 impl Handler for StaticPageHandler {
     fn handle(&self, http_request: HttpRequest) -> HttpResponse {
         if http_request.method != GET {
@@ -33,7 +35,7 @@ impl Handler for StaticPageHandler {
             status: HttpStatusCode::Ok,
             reason_phrase: "OK".to_string(),
             header: format!("Content-Length: {}", self.page.len()),
-            body: self.page.clone(),
+            body: self.page.to_string(),
         }
     }
 }
