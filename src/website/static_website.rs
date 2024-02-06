@@ -64,7 +64,7 @@ impl Server for StaticWebsite {
         // Special logic for special uris
         let actual_resource = if http_request.uri == "/" {
             "index.html"
-        } else if http_request.uri.starts_with("/") {
+        } else if http_request.uri.starts_with('/') {
             &http_request.uri[1..]
         } else {
             &http_request.uri
@@ -75,6 +75,12 @@ impl Server for StaticWebsite {
         } else {
             self.serve_error(http_request)
         }
+    }
+}
+
+impl Default for StaticWebsite {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

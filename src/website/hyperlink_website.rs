@@ -41,10 +41,10 @@ impl LoadedFile {
         }
     }
     pub fn from_path(filepath: &Path) -> anyhow::Result<LoadedFile> {
-        let contents = fs::read(&filepath)
+        let contents = fs::read(filepath)
             .map_err(anyhow::Error::from)
             .context(format!("Unable to read from {:?}", &filepath))?;
-        let last_modified = check_last_modified(&filepath)?;
+        let last_modified = check_last_modified(filepath)?;
         Ok(LoadedFile {
             filepath: filepath.to_path_buf(),
             last_modified,

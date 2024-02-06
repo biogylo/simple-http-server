@@ -28,7 +28,7 @@ impl HttpResponse {
         );
         string_part
             .bytes()
-            .chain(self.body.clone().into_iter())
+            .chain(self.body.clone())
             .collect()
     }
 }
