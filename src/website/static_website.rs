@@ -42,25 +42,8 @@ impl StaticWebsite {
     }
 }
 
-fn reload_and_log_if_unable(file: LoadedFile) -> LoadedFile {
-    file.try_reload().unwrap_or_else(|(file, err)| {
-        println!("Unable to reload due to the following error: {}", err);
-        file
-    })
-}
-
 impl Server for StaticWebsite {
-    fn reload(self) -> Self {
-        // Check if any of the loaded resources have changed
-        let resources: HashMap<String, LoadedFile> = self
-            .resources
-            .into_iter()
-            .map(|(key, file)| (key, reload_and_log_if_unable(file)))
-            .collect();
-        Self { resources }
-    }
-    fn serve(&self, http_request: HttpRequest) -> HttpResponse {
-        println!("Serving for: {:?}", http_request);
+    fn serve(&self, http_request: &HttpRequest) -> HttpResponse {
         // Special logic for special uris
         let actual_resource = if http_request.uri == "/" {
             "index.html"

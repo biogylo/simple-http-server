@@ -15,5 +15,7 @@ overflow-checks = true     # Disable integer overflow checks.
 debug = true
 
 [dependencies]
+simple_logger = "4.3.3"
+log = "0.4.20"
 itertools = "0.12.0"
 anyhow = "1.0.79"
