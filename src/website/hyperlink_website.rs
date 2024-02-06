@@ -1,47 +1,54 @@
-use std::ffi::OsString;
 use std::fs;
-use std::fs::DirEntry;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::time::SystemTime;
 
-use itertools::Itertools;
+use anyhow::Context;
 
-use crate::handler::static_page::StaticPageHandler;
-use crate::website::static_website::StaticWebsite;
-
-fn dir_entry_is_html(dir_entry: &DirEntry) -> bool {
-    dir_entry.path().extension().is_some_and(|e| e == "html")
+pub struct LoadedFile {
+    pub filepath: PathBuf,
+    pub last_modified: SystemTime,
+    pub contents: Vec<u8>,
 }
 
-fn get_resource_path_and_resource_name(dir_entry: DirEntry) -> (PathBuf, OsString) {
-    let resource_path = dir_entry.path();
-    let path = dir_entry.path();
-    let path_str = path
-        .file_name()
-        .expect("Gotta be")
-        .to_str()
-        .expect("We are assuming this is good");
-    let (resource_name, _) = path_str.split_once(".").unwrap();
-    let resource_name: String = "/".to_owned() + resource_name;
-    (resource_path, resource_name.into())
+pub fn check_last_modified(filepath: &Path) -> anyhow::Result<SystemTime> {
+    fs::metadata(filepath)
+        .and_then(|md| md.modified())
+        .map_err(anyhow::Error::from)
+        .context(format!("Unable to metadata from {:?}", &filepath))
 }
 
-pub fn build_hyperlinked_website<'a, 'b>(directory: PathBuf) -> anyhow::Result<StaticWebsite> {
-    // Gotta do the following
-    // 1. List all jinja2 files in the directory
-    let dirs: Vec<DirEntry> = fs::read_dir(directory)?.try_collect()?;
-
-    let mut server = StaticWebsite::default();
-
-    for (resource_path, resource_name) in dirs
-        .into_iter()
-        .filter(dir_entry_is_html)
-        .map(get_resource_path_and_resource_name)
-    {
-        let page_contents = fs::read_to_string(resource_path).map_err(anyhow::Error::from)?;
-        let handler = StaticPageHandler::new(page_contents);
-        server = server.with_endpoint(resource_name, Box::new(handler))
+impl LoadedFile {
+    pub fn try_reload(self) -> Result<LoadedFile, (LoadedFile, anyhow::Error)> {
+        let Ok(last_mtime) = check_last_modified(&self.filepath) else {
+            let err_str = format!(
+                "Didn't reload {:?}, since we were unable to get last load time",
+                self.filepath
+            );
+            return Err((self, anyhow::Error::msg(err_str)));
+        };
+        if SystemTime::now() > last_mtime {
+            return Ok(self);
+        }
+        let maybe_file = LoadedFile::from_path(&self.filepath);
+        if let Ok(file) = maybe_file {
+            Ok(file)
+        } else {
+            let err = format!(
+                "Didn't reload {:?}, since we were unable to load its contents",
+                self.filepath
+            );
+            Err((self, anyhow::Error::msg(err)))
+        }
     }
-    Ok(server)
-
-    // TODO: Make this a const fn
+    pub fn from_path(filepath: &Path) -> anyhow::Result<LoadedFile> {
+        let contents = fs::read(&filepath)
+            .map_err(anyhow::Error::from)
+            .context(format!("Unable to read from {:?}", &filepath))?;
+        let last_modified = check_last_modified(&filepath)?;
+        Ok(LoadedFile {
+            filepath: filepath.to_path_buf(),
+            last_modified,
+            contents,
+        })
+    }
 }

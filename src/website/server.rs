@@ -17,12 +17,27 @@ fn take_request_from_stream(mut stream: &TcpStream) -> anyhow::Result<HttpReques
     }
     http_lines.try_into()
 }
+impl HttpResponse {
+    fn to_bytes(&self) -> Vec<u8> {
+        let string_part = format!(
+            "{} {} {}\r\n{}\r\n\r\n",
+            self.version,
+            usize::from(&self.status),
+            self.reason_phrase,
+            self.header
+        );
+        string_part
+            .bytes()
+            .chain(self.body.clone().into_iter())
+            .collect()
+    }
+}
 pub trait Server {
     fn process_connection(&self, mut tcp_stream: TcpStream) -> anyhow::Result<()> {
         let request: HttpRequest = take_request_from_stream(&tcp_stream)?;
         let response: HttpResponse = self.serve(request);
         tcp_stream
-            .write_all(response.to_string().as_bytes())
+            .write_all(&response.to_bytes())
             .map_err(anyhow::Error::from)
     }
 
@@ -36,6 +51,7 @@ pub trait Server {
         Err(anyhow::Error::msg("listener.incoming() returned None?????"))
     }
 
+    fn reload(self) -> Self;
     fn serve(&self, http_request: HttpRequest) -> HttpResponse;
 
     fn serve_error(&self, http_request: HttpRequest) -> HttpResponse {

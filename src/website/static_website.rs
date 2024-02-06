@@ -1,27 +1,77 @@
 use std::collections::HashMap;
-use std::ffi::OsString;
+use std::fs;
+use std::path::Path;
 
-use crate::handler::default_handler::default_request_handler;
-use crate::handler::handler::Handler;
+use itertools::Itertools;
+
 use crate::http::request::HttpRequest;
 use crate::http::response::HttpResponse;
+use crate::website::hyperlink_website::LoadedFile;
 use crate::website::server::Server;
 
 pub struct StaticWebsite {
-    endpoints: HashMap<OsString, Box<dyn Handler>>,
+    resources: HashMap<String, LoadedFile>,
 }
 
 impl StaticWebsite {
+    pub fn from_assets(directory: &Path) -> anyhow::Result<Self> {
+        // First, load public assets
+        let public = directory.join("public");
+        let dirs = fs::read_dir(public)?;
+        let resources = dirs
+            .into_iter()
+            .map(|dr| {
+                dr.map_err(anyhow::Error::from)
+                    .map(|d| (d.file_name(), d.path()))
+                    .and_then(|(f_n, f_p)| {
+                        let resource_str = f_n.to_str().expect("Paths should be parseable");
+                        let file = match LoadedFile::from_path(&f_p) {
+                            Ok(file) => file,
+                            Err(e) => {
+                                return Err(e);
+                            }
+                        };
+                        Ok((resource_str.to_string(), file))
+                    })
+            })
+            .try_collect()?;
+        Ok(Self { resources })
+    }
     pub fn default() -> Self {
-        let server = StaticWebsite::new(&default_request_handler);
-        server
+        StaticWebsite::from_assets(Path::new("assets/")).expect("There should be an assets folder")
     }
 }
 
+fn reload_and_log_if_unable(file: LoadedFile) -> LoadedFile {
+    file.try_reload().unwrap_or_else(|(file, err)| {
+        println!("Unable to reload due to the following error: {}", err);
+        file
+    })
+}
+
 impl Server for StaticWebsite {
+    fn reload(self) -> Self {
+        // Check if any of the loaded resources have changed
+        let resources: HashMap<String, LoadedFile> = self
+            .resources
+            .into_iter()
+            .map(|(key, file)| (key, reload_and_log_if_unable(file)))
+            .collect();
+        Self { resources }
+    }
     fn serve(&self, http_request: HttpRequest) -> HttpResponse {
-        if let Some(handler) = self.endpoints.get(&http_request.uri) {
-            handler.handle(http_request)
+        println!("Serving for: {:?}", http_request);
+        // Special logic for special uris
+        let actual_resource = if http_request.uri == "/" {
+            "index.html"
+        } else if http_request.uri.starts_with("/") {
+            &http_request.uri[1..]
+        } else {
+            &http_request.uri
+        };
+
+        if let Some(resource) = self.resources.get(actual_resource) {
+            HttpResponse::from_page(&resource.contents)
         } else {
             self.serve_error(http_request)
         }
@@ -29,14 +79,9 @@ impl Server for StaticWebsite {
 }
 
 impl StaticWebsite {
-    pub fn new(default_handler: &dyn Handler) -> StaticWebsite {
+    pub fn new() -> StaticWebsite {
         StaticWebsite {
-            endpoints: HashMap::default(),
+            resources: HashMap::default(),
         }
-    }
-
-    pub fn with_endpoint(mut self, endpoint: OsString, handler: Box<dyn Handler>) -> StaticWebsite {
-        self.endpoints.insert(endpoint, handler);
-        self
     }
 }

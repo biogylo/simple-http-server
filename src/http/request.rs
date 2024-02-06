@@ -1,4 +1,3 @@
-use std::ffi::OsString;
 use std::fmt::{Debug, Formatter};
 
 use anyhow::{Context, Result};
@@ -8,7 +7,7 @@ use crate::http::methods::RequestMethod;
 
 pub struct HttpRequest {
     pub method: RequestMethod,
-    pub uri: OsString,
+    pub uri: String,
     body: Vec<String>,
 }
 
@@ -16,8 +15,9 @@ impl TryFrom<Vec<String>> for HttpRequest {
     type Error = anyhow::Error;
 
     fn try_from(value: Vec<String>) -> Result<HttpRequest> {
-        let (header_token, body_tokens) =
-            value.split_first().context("The request was incomplete")?;
+        let (header_token, body_tokens) = value
+            .split_first()
+            .context(format!("The request was incomplete:{:?}", value))?;
         let (method_token, uri, _): (&str, &str, &str) = header_token
             .split_whitespace()
             .next_tuple()
