@@ -6,7 +6,7 @@ use itertools::Itertools;
 
 use crate::http::request::HttpRequest;
 use crate::http::response::HttpResponse;
-use crate::website::hyperlink_website::LoadedFile;
+use crate::website::loaded_file::LoadedFile;
 use crate::website::server::Server;
 
 pub struct StaticWebsite {

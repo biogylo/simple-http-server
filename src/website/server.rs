@@ -1,8 +1,8 @@
-use crate::handler::default_handler::default_request_handler;
-use crate::http::request::HttpRequest;
-use crate::http::response::HttpResponse;
 use std::io::{BufRead, BufReader, Write};
 use std::net::{TcpListener, TcpStream};
+
+use crate::http::request::HttpRequest;
+use crate::http::response::{HttpResponse, HttpStatusCode};
 
 fn take_request_from_stream(mut stream: &TcpStream) -> anyhow::Result<HttpRequest> {
     let buf_reader = BufReader::new(&mut stream);
@@ -17,6 +17,7 @@ fn take_request_from_stream(mut stream: &TcpStream) -> anyhow::Result<HttpReques
     }
     http_lines.try_into()
 }
+
 impl HttpResponse {
     fn to_bytes(&self) -> Vec<u8> {
         let string_part = format!(
@@ -26,12 +27,10 @@ impl HttpResponse {
             self.reason_phrase,
             self.header
         );
-        string_part
-            .bytes()
-            .chain(self.body.clone())
-            .collect()
+        string_part.bytes().chain(self.body.clone()).collect()
     }
 }
+
 pub trait Server {
     fn process_connection(&self, mut tcp_stream: TcpStream) -> anyhow::Result<()> {
         let request: HttpRequest = take_request_from_stream(&tcp_stream)?;
@@ -54,7 +53,13 @@ pub trait Server {
     fn reload(self) -> Self;
     fn serve(&self, http_request: HttpRequest) -> HttpResponse;
 
-    fn serve_error(&self, http_request: HttpRequest) -> HttpResponse {
-        default_request_handler(http_request)
+    fn serve_error(&self, _http_request: HttpRequest) -> HttpResponse {
+        HttpResponse {
+            version: Default::default(),
+            status: HttpStatusCode::BadRequest,
+            reason_phrase: "The desired request was not found".to_string(),
+            header: "".to_string(),
+            body: "".into(),
+        }
     }
 }
