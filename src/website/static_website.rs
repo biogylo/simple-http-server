@@ -6,7 +6,7 @@ use itertools::Itertools;
 
 use crate::http::request::HttpRequest;
 use crate::http::response::HttpResponse;
-use crate::website::loaded_file::LoadedFile;
+use crate::website::loaded_file::{LoadedFile, ReloadResult};
 use crate::website::server::Server;
 
 pub struct StaticWebsite {
@@ -43,7 +43,7 @@ impl StaticWebsite {
 }
 
 impl Server for StaticWebsite {
-    fn serve(&self, http_request: &HttpRequest) -> HttpResponse {
+    fn serve(&mut self, http_request: &HttpRequest) -> HttpResponse {
         // Special logic for special uris
         let actual_resource = if http_request.uri == "/" {
             "index.html"
@@ -52,10 +52,22 @@ impl Server for StaticWebsite {
         } else {
             &http_request.uri
         };
-        match self.resources.get(actual_resource) {
-            None => self.redirect_to_index(http_request),
-            Some(resource) => HttpResponse::from_page(&resource.contents),
-        }
+        let Some(resource) = self.resources.get(actual_resource) else {
+            return self.redirect_to_index(http_request);
+        };
+        let reload_result = resource.try_reload();
+        let file_ref = match reload_result {
+            ReloadResult::NotNeeded(file_ref) => file_ref,
+            ReloadResult::Reloaded(file) => {
+                self.resources.insert(actual_resource.to_string(), file);
+                &self.resources[actual_resource]
+            }
+            ReloadResult::ErrorDidntReload((file_ref, err_string)) => {
+                log::error!("Unable to reload resource! {}", err_string);
+                file_ref
+            }
+        };
+        HttpResponse::from_page(&file_ref.contents)
     }
 }
 

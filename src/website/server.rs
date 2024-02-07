@@ -40,30 +40,23 @@ fn unix_timestamp_from(system_time: SystemTime) -> f64 {
 impl Display for ExchangeSummary {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            ExchangeSummary::IoError(err) => write!(
-                f,
-                "Unable to serve request, due to IO Error: {}",
-                err.to_string()
-            ),
+            ExchangeSummary::IoError(err) => {
+                write!(f, "Unable to serve request, due to IO Error: {}", err)
+            }
             ExchangeSummary::UnableToParseRequest((socket_addr, err)) => write!(
                 f,
-                "Unable to serve request to address {} since it wasn't parseable, error: {}",
-                socket_addr.to_string(),
-                err.to_string()
+                "Unable to serve request to address {} since it wasn't parseable, error: {:?}",
+                socket_addr, err
             ),
             ExchangeSummary::ErrorServing((socket_addr, http_request, err)) => write!(
                 f,
-                "Unable to serve request to address {} for uri {:?}, due to an error: {}",
-                socket_addr.to_string(),
-                http_request.uri,
-                err.to_string()
+                "Unable to serve request to address {} for uri {:?}, due to an error: {:?}",
+                socket_addr, http_request.uri, err
             ),
             ExchangeSummary::Served((socket_addr, http_request, http_response)) => write!(
                 f,
                 "Successfully served request to address {} for uri {:?}, with response status {}",
-                socket_addr.to_string(),
-                http_request.uri,
-                http_response.status as usize
+                socket_addr, http_request.uri, http_response.status as usize
             ),
         }
     }
@@ -133,7 +126,7 @@ pub trait Server {
         let buf_reader = BufReader::new(&mut stream);
         let mut http_lines: Vec<String> = Default::default();
         for line_result in buf_reader.lines() {
-            let line = line_result?;
+            let line = line_result.with_context(|| "Unable to take line from tcp stream!")?;
             if line.is_empty() {
                 break;
             } else {
@@ -148,7 +141,7 @@ pub trait Server {
             .write_all(&response.to_bytes())
             .map_err(anyhow::Error::from)
     }
-    fn listen(&self, tcp_listener: TcpListener) -> anyhow::Result<()> {
+    fn listen(&mut self, tcp_listener: TcpListener) -> anyhow::Result<()> {
         // Get the current local timestamp
         let timestamp_string = chrono::Utc::now().format("%Y-%m-%d_%H-%M-%S").to_string();
         let csv_filename = format!("simple_http_server_{}.csv", timestamp_string);
@@ -170,7 +163,7 @@ pub trait Server {
                     let socket_addr = stream
                         .peer_addr()
                         .with_context(|| "Unable to obtain peer address")
-                        .map_err(|err| ExchangeSummary::IoError(anyhow::Error::from(err)))?;
+                        .map_err(ExchangeSummary::IoError)?;
                     Ok((socket_addr, stream))
                 })
                 .and_then(|(socket_addr, stream)| {
@@ -179,12 +172,7 @@ pub trait Server {
                         .with_context(|| {
                             format!("Unable to take a valid request from {}", socket_addr)
                         })
-                        .map_err(|err| {
-                            ExchangeSummary::UnableToParseRequest((
-                                socket_addr,
-                                anyhow::Error::from(err),
-                            ))
-                        })?;
+                        .map_err(|err| ExchangeSummary::UnableToParseRequest((socket_addr, err)))?;
                     Ok((socket_addr, stream, http_request))
                 })
                 .and_then(|(socket_addr, stream, http_request)| {
@@ -195,11 +183,7 @@ pub trait Server {
                             format!("Unable to put a response into socket on {}", socket_addr)
                         })
                         .map_err(|err| {
-                            ExchangeSummary::ErrorServing((
-                                socket_addr,
-                                http_request.clone(),
-                                anyhow::Error::from(err),
-                            ))
+                            ExchangeSummary::ErrorServing((socket_addr, http_request.clone(), err))
                         })?;
                     Ok(ExchangeSummary::Served((
                         socket_addr,
@@ -218,21 +202,21 @@ pub trait Server {
             let server_record: ServerRecord =
                 ServerRecord::from_exchange_summary(end_time, duration, exchange_summary);
             csv_writer.serialize(server_record).with_context(|| {
-                format!("Unable to add row to CSV! Aborting server due to lack of function!")
+                "Unable to add row to CSV! Aborting server due to lack of function!".to_string()
             })?;
             csv_writer.flush().with_context(|| {
-                format!("Unable to flush to CSV! Aborting server due to lack of function!")
+                "Unable to flush to CSV! Aborting server due to lack of function!".to_string()
             })?;
         }
         Err(anyhow::Error::msg("listener.incoming() returned None?????"))
     }
-    fn serve(&self, http_request: &HttpRequest) -> HttpResponse;
+    fn serve(&mut self, http_request: &HttpRequest) -> HttpResponse;
 
     fn redirect_to_index(&self, _http_request: &HttpRequest) -> HttpResponse {
         HttpResponse {
             version: Default::default(),
-            status: HttpStatusCode::MovedPermanently,
-            reason_phrase: "Moved permanently".to_string(),
+            status: HttpStatusCode::SeeOther,
+            reason_phrase: "See Other".to_string(),
             header: "Location: /index.html".to_string(),
             body: "".into(),
         }

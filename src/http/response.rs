@@ -18,7 +18,8 @@ impl Display for HttpVersion {
 pub enum HttpStatusCode {
     Ok = 200,
     BadRequest = 400,
-    MovedPermanently = 300,
+    MovedPermanently = 301,
+    SeeOther = 303,
     IoError = 123456,
 }
 

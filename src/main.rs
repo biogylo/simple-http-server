@@ -12,7 +12,7 @@ pub enum ServerChoice {
 
 // use anyhow::Result;
 fn main() -> Result<()> {
-    let server: StaticWebsite = StaticWebsite::default();
+    let mut server: StaticWebsite = StaticWebsite::default();
     let ip_address = "127.0.0.1:7878";
     let listener = TcpListener::bind(ip_address)?;
     println!("Listening on {}", ip_address);

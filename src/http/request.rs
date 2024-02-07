@@ -18,12 +18,17 @@ impl TryFrom<Vec<String>> for HttpRequest {
     fn try_from(value: Vec<String>) -> anyhow::Result<HttpRequest> {
         let (header_token, body_tokens) = value
             .split_first()
-            .context(format!("The request was incomplete:{:?}", value))?;
+            .with_context(|| format!("The request was incomplete:{:?}", value))?;
+
         let (method_token, uri, _): (&str, &str, &str) = header_token
             .split_whitespace()
             .next_tuple()
-            .context("Missing URI, or Version token")?;
-        let method: RequestMethod = method_token.parse()?;
+            .with_context(|| "Missing URI, or Version token")?;
+
+        let method: RequestMethod = method_token
+            .parse()
+            .with_context(|| "Unable to parse the method token")?;
+
         let body = body_tokens.to_vec();
         Ok(HttpRequest {
             method,
