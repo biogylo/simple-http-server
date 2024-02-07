@@ -14,17 +14,17 @@ impl Display for HttpVersion {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
 pub enum HttpStatusCode {
-    Ok,
-    BadRequest,
+    Ok = 200,
+    BadRequest = 400,
+    MovedPermanently = 300,
+    IoError = 123456,
 }
 
 impl From<&HttpStatusCode> for usize {
     fn from(value: &HttpStatusCode) -> Self {
-        match value {
-            HttpStatusCode::Ok => 200,
-            HttpStatusCode::BadRequest => 400,
-        }
+        value.to_owned() as usize
     }
 }
 

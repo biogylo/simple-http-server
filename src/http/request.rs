@@ -1,10 +1,11 @@
 use std::fmt::{Debug, Formatter};
 
-use anyhow::{Context, Result};
+use anyhow::Context;
 use itertools::Itertools;
 
 use crate::http::methods::RequestMethod;
 
+#[derive(Clone)]
 pub struct HttpRequest {
     pub method: RequestMethod,
     pub uri: String,
@@ -14,7 +15,7 @@ pub struct HttpRequest {
 impl TryFrom<Vec<String>> for HttpRequest {
     type Error = anyhow::Error;
 
-    fn try_from(value: Vec<String>) -> Result<HttpRequest> {
+    fn try_from(value: Vec<String>) -> anyhow::Result<HttpRequest> {
         let (header_token, body_tokens) = value
             .split_first()
             .context(format!("The request was incomplete:{:?}", value))?;

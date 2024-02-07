@@ -52,11 +52,9 @@ impl Server for StaticWebsite {
         } else {
             &http_request.uri
         };
-
-        if let Some(resource) = self.resources.get(actual_resource) {
-            HttpResponse::from_page(&resource.contents)
-        } else {
-            self.serve_error(http_request)
+        match self.resources.get(actual_resource) {
+            None => self.redirect_to_index(http_request),
+            Some(resource) => HttpResponse::from_page(&resource.contents),
         }
     }
 }
