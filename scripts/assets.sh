@@ -6,5 +6,5 @@ check_required_environment
 
 # Start script
 echo "Syncing assets"
-echo_and_run rsync -av "$SCRIPT_DIRECTORY"/../assets/public/ "$REMOTE_USER"@"$REMOTE_HOSTNAME":"$REMOTE_PUBLIC_DIRECTORY" --delete
+echo_and_run rsync -av "$SCRIPT_DIRECTORY"/../assets/public/ "$REMOTE_USER"@"$REMOTE_HOSTNAME":"$REMOTE_PUBLIC_DIRECTORY"/ --delete
 echo "Done!"

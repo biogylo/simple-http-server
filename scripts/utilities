@@ -14,6 +14,7 @@ check_required_environment(){
   assert "REMOTE_PRIVATE_DIRECTORY"
   assert "REMOTE_PUBLIC_DIRECTORY"
   assert "REMOTE_PROTECTED_DIRECTORY"
+  assert "SERVER_LISTEN_PORT"
 }
 echo_and_run() {
     echo "Running -> $*" ; "$@" ;

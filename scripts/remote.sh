@@ -6,5 +6,5 @@ check_required_environment
 
 # Start script
 echo "Remoting into server"
-echo_and_run ssh "$REMOTE_USER"@"$REMOTE_HOSTNAME"
+echo_and_run ssh "$REMOTE_USER"@"$REMOTE_HOSTNAME" "$@"
 echo "Done!"

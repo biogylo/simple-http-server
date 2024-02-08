@@ -1,8 +1,7 @@
 use std::collections::HashMap;
-use std::fs;
-use std::path::Path;
+use std::path::PathBuf;
 
-use itertools::Itertools;
+use relative_path::RelativePath;
 
 use crate::http::request::HttpRequest;
 use crate::http::response::HttpResponse;
@@ -10,78 +9,58 @@ use crate::website::loaded_file::{LoadedFile, ReloadResult};
 use crate::website::server::Server;
 
 pub struct StaticWebsite {
-    resources: HashMap<String, LoadedFile>,
+    public_directory: PathBuf,
+    cache: HashMap<String, LoadedFile>,
 }
 
 impl StaticWebsite {
-    pub fn from_assets(directory: &Path) -> anyhow::Result<Self> {
-        // First, load public assets
-        println!("Trying to load from directory: {:?}", directory);
-        let public = directory.join("public");
-        let dirs = fs::read_dir(public)?;
-        let resources = dirs
-            .into_iter()
-            .map(|dr| {
-                dr.map_err(anyhow::Error::from)
-                    .map(|d| (d.file_name(), d.path()))
-                    .and_then(|(f_n, f_p)| {
-                        let resource_str = f_n.to_str().expect("Paths should be parseable");
-                        let file = match LoadedFile::from_path(&f_p) {
-                            Ok(file) => file,
-                            Err(e) => {
-                                return Err(e);
-                            }
-                        };
-                        Ok((resource_str.to_string(), file))
-                    })
-            })
-            .try_collect()?;
-        Ok(Self { resources })
-    }
-    pub fn default() -> Self {
-        StaticWebsite::from_assets(Path::new("assets/")).expect("There should be an assets folder")
+    pub fn new(public_directory: PathBuf) -> Self {
+        StaticWebsite {
+            public_directory,
+            cache: Default::default(),
+        }
     }
 }
 
 impl Server for StaticWebsite {
     fn serve(&mut self, http_request: &HttpRequest) -> HttpResponse {
         // Special logic for special uris
-        let actual_resource = if http_request.uri == "/" {
-            "index.html"
-        } else if http_request.uri.starts_with('/') {
-            &http_request.uri[1..]
-        } else {
-            &http_request.uri
-        };
-        let Some(resource) = self.resources.get(actual_resource) else {
-            return self.redirect_to_index(http_request);
-        };
-        let reload_result = resource.try_reload();
-        let file_ref = match reload_result {
-            ReloadResult::NotNeeded(file_ref) => file_ref,
-            ReloadResult::Reloaded(file) => {
-                self.resources.insert(actual_resource.to_string(), file);
-                &self.resources[actual_resource]
-            }
-            ReloadResult::ErrorDidntReload((file_ref, err_string)) => {
-                log::error!("Unable to reload resource! {}", err_string);
-                file_ref
-            }
-        };
-        HttpResponse::from_page(&file_ref.contents)
-    }
-}
+        let key = http_request.uri.to_string();
 
-impl Default for StaticWebsite {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+        match self.cache.get(&key) {
+            None => {
+                // Gotta see if it exists, and put into cache
+                let relative_path = RelativePath::new(&key);
+                let resource_path = relative_path.to_path(&self.public_directory);
+                if !resource_path.is_file() {
+                    return self.redirect_to_index(http_request);
+                }
+                let Ok(loaded_file) = LoadedFile::from_path(&resource_path) else {
+                    return self.redirect_to_index(http_request);
+                };
+                self.cache.insert(key.clone(), loaded_file);
+                HttpResponse::from_page(&self.cache[&key].contents)
+            }
+            Some(resource) => {
+                // Gotta see if it needs reloading and do whats needed
+                if !resource.filepath.is_file() {
+                    return self.redirect_to_index(http_request);
+                }
+                let reload_result = resource.try_reload();
 
-impl StaticWebsite {
-    pub fn new() -> StaticWebsite {
-        StaticWebsite {
-            resources: HashMap::default(),
+                let file_ref = match reload_result {
+                    ReloadResult::NotNeeded(file_ref) => file_ref,
+                    ReloadResult::Reloaded(file) => {
+                        self.cache.insert(key.clone(), file);
+                        &self.cache[&key]
+                    }
+                    ReloadResult::ErrorDidntReload((file_ref, err_string)) => {
+                        log::error!("Unable to reload resource! {}", err_string);
+                        file_ref
+                    }
+                };
+                HttpResponse::from_page(&file_ref.contents)
+            }
         }
     }
 }

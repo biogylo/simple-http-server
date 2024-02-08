@@ -9,6 +9,10 @@ SSH_COMMAND="ssh $REMOTE_USER@$REMOTE_HOSTNAME"
 # Start script
 echo "Step 1: Cloning repo if missing"
 REPOSITORY_TARGET_LOCATION="$REMOTE_PRIVATE_DIRECTORY"/simple-http-server
+REMOTE_BUILT_BINARY_LOCATION="$REPOSITORY_TARGET_LOCATION"/target/release/simple-http-server
+REMOTE_DEPLOYED_BINARY_LOCATION="$REMOTE_PROTECTED_DIRECTORY"/server_bin
+REMOTE_DAEMON_LOCATION="$REMOTE_PROTECTED_DIRECTORY"/daemon.sh
+
 echo_and_run $SSH_COMMAND \
   "/usr/local/bin/git -C $REPOSITORY_TARGET_LOCATION pull || /usr/local/bin/git clone $REPOSITORY_URL $REPOSITORY_TARGET_LOCATION"
 
@@ -18,6 +22,18 @@ echo_and_run $SSH_COMMAND \
 
 echo "Step 3: Move to protected"
 echo_and_run $SSH_COMMAND \
-  "/bin/mv $REPOSITORY_TARGET_LOCATION/target/simple-http-server $REMOTE_PROTECTED_DIRECTORY/server.bin"
+  "/bin/cp $REMOTE_BUILT_BINARY_LOCATION $REMOTE_DEPLOYED_BINARY_LOCATION"
+
+echo "Step 4: Build daemon script"
+echo_and_run $SSH_COMMAND \
+  "
+  /bin/echo '
+#!/bin/bash
+$REMOTE_DEPLOYED_BINARY_LOCATION \
+  --public-directory $REMOTE_PUBLIC_DIRECTORY \
+  --listen-port $SERVER_LISTEN_PORT
+' | /usr/bin/tee $REMOTE_DAEMON_LOCATION
+/bin/chmod 755 $REMOTE_DAEMON_LOCATION
+"
 
 echo "Done!"
