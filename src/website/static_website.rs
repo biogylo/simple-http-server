@@ -16,6 +16,7 @@ pub struct StaticWebsite {
 impl StaticWebsite {
     pub fn from_assets(directory: &Path) -> anyhow::Result<Self> {
         // First, load public assets
+        println!("Trying to load from directory: {:?}", directory);
         let public = directory.join("public");
         let dirs = fs::read_dir(public)?;
         let resources = dirs

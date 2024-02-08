@@ -1,0 +1,4 @@
+REPOSITORY_URL=https://github.com/biogylo/simple-http-server
+echo_and_run() {
+    echo "Running -> $*" ; "$@" ;
+}
