@@ -1,9 +1,10 @@
 use std::net::TcpListener;
 use std::path::PathBuf;
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use clap::Parser;
 
+use directories::UserDirs;
 use simple_http_server::website::server::Server;
 use simple_http_server::website::static_website::StaticWebsite;
 
@@ -23,6 +24,10 @@ struct Args {
     /// Port
     #[arg(short, long)]
     listen_port: usize,
+
+    /// Port
+    #[arg(long)]
+    logs_directory: Option<String>,
 }
 
 // use anyhow::Result;
@@ -36,10 +41,32 @@ fn main() -> Result<()> {
             public_directory
         ))?;
     }
+    let logs_directory: PathBuf = match args.logs_directory {
+        None => {
+            // Use the users directory
+            UserDirs::new()
+                .with_context(|| "Unable to obtain home directory for default logs folder! Fatal!")?
+                .home_dir()
+                .to_path_buf()
+                .join(".logs/simple-http-server/")
+        }
+        Some(directory_string) => PathBuf::from(directory_string),
+    };
+
+    if !&logs_directory.exists() {
+        std::fs::create_dir_all(&logs_directory)
+            .with_context(|| format!("Error creating logs directory in {:?}", &logs_directory))?;
+    }
+    if !logs_directory.is_dir() {
+        Err(anyhow!(
+            "The given logs directory argument is not a path! {:?}",
+            &logs_directory
+        ))?;
+    }
 
     let mut server: StaticWebsite = StaticWebsite::new(public_directory);
     let ip_address = format!("127.0.0.1:{}", args.listen_port);
     let listener = TcpListener::bind(&ip_address)?;
     println!("Listening on {}", ip_address);
-    server.listen(listener)
+    server.listen(listener, logs_directory)
 }

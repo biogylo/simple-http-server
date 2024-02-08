@@ -1,7 +1,7 @@
 use std::fmt::{Display, Formatter};
 use std::io::{BufRead, BufReader, Write};
 use std::net::{SocketAddr, TcpListener, TcpStream};
-use std::path::Path;
+use std::path::PathBuf;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use anyhow::Context;
@@ -141,11 +141,11 @@ pub trait Server {
             .write_all(&response.to_bytes())
             .map_err(anyhow::Error::from)
     }
-    fn listen(&mut self, tcp_listener: TcpListener) -> anyhow::Result<()> {
+    fn listen(&mut self, tcp_listener: TcpListener, logs_directory: PathBuf) -> anyhow::Result<()> {
         // Get the current local timestamp
         let timestamp_string = chrono::Utc::now().format("%Y-%m-%d_%H-%M-%S").to_string();
         let csv_filename = format!("simple_http_server_{}.csv", timestamp_string);
-        let csv_path = Path::new("/var/log/myserver/").join(csv_filename);
+        let csv_path = logs_directory.join(csv_filename);
         let _log_filename = format!("simple_http_server_{}.log", timestamp_string);
         SimpleLogger::new().init().unwrap();
         let mut csv_writer = csv::Writer::from_path(&csv_path).with_context(|| {
