@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use anyhow::{anyhow, Context, Result};
 use clap::Parser;
 use directories::UserDirs;
+use relative_path::RelativePath;
 
 use simple_http_server::website::server::Server;
 use simple_http_server::website::static_website::StaticWebsite;
@@ -44,11 +45,13 @@ fn main() -> Result<()> {
     let log_directory: PathBuf = match args.logs_directory {
         None => {
             // Use the users directory
-            UserDirs::new()
+            let home_path = UserDirs::new()
                 .with_context(|| "Unable to obtain home directory for default logs folder! Fatal!")?
                 .home_dir()
-                .to_path_buf()
-                .join(".logs/simple-http-server/")
+                .to_path_buf();
+
+            let relative_path = RelativePath::new(".logs/simple-http-server/");
+            relative_path.to_path(home_path)
         }
         Some(directory_string) => PathBuf::from(directory_string),
     };

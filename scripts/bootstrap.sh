@@ -34,7 +34,7 @@ echo_and_run $SSH_COMMAND \
 $REMOTE_DEPLOYED_BINARY_LOCATION\
   --public-directory $REMOTE_PUBLIC_DIRECTORY \
   --listen-port $SERVER_LISTEN_PORT \
-  --log-directory $REMOTE_PRIVATE_DIRECTORY/logs
+  --logs-directory $REMOTE_PROTECTED_DIRECTORY/logs
 ' | /usr/bin/tee $REMOTE_DAEMON_LOCATION
 
 /bin/chmod 755 $REMOTE_DAEMON_LOCATION
