@@ -1,4 +1,20 @@
-REPOSITORY_URL=https://github.com/biogylo/simple-http-server
+#!/usr/bin/env sh
+REPOSITORY_URL="https://github.com/biogylo/simple-http-server"
+
+assert(){
+  if [ ! -v $* ]; then
+    echo "$@ is unset! Aborting."
+    exit 1
+  fi
+}
+
+check_required_environment(){
+  assert "REMOTE_USER"
+  assert "REMOTE_HOSTNAME"
+  assert "REMOTE_PRIVATE_DIRECTORY"
+  assert "REMOTE_PUBLIC_DIRECTORY"
+  assert "REMOTE_PROTECTED_DIRECTORY"
+}
 echo_and_run() {
     echo "Running -> $*" ; "$@" ;
 }
