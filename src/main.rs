@@ -3,8 +3,8 @@ use std::path::PathBuf;
 
 use anyhow::{anyhow, Context, Result};
 use clap::Parser;
-
 use directories::UserDirs;
+
 use simple_http_server::website::server::Server;
 use simple_http_server::website::static_website::StaticWebsite;
 
@@ -41,7 +41,7 @@ fn main() -> Result<()> {
             public_directory
         ))?;
     }
-    let logs_directory: PathBuf = match args.logs_directory {
+    let log_directory: PathBuf = match args.logs_directory {
         None => {
             // Use the users directory
             UserDirs::new()
@@ -53,14 +53,14 @@ fn main() -> Result<()> {
         Some(directory_string) => PathBuf::from(directory_string),
     };
 
-    if !&logs_directory.exists() {
-        std::fs::create_dir_all(&logs_directory)
-            .with_context(|| format!("Error creating logs directory in {:?}", &logs_directory))?;
+    if !&log_directory.exists() {
+        std::fs::create_dir_all(&log_directory)
+            .with_context(|| format!("Error creating logs directory in {:?}", &log_directory))?;
     }
-    if !logs_directory.is_dir() {
+    if !log_directory.is_dir() {
         Err(anyhow!(
             "The given logs directory argument is not a path! {:?}",
-            &logs_directory
+            &log_directory
         ))?;
     }
 
@@ -68,5 +68,5 @@ fn main() -> Result<()> {
     let ip_address = format!("127.0.0.1:{}", args.listen_port);
     let listener = TcpListener::bind(&ip_address)?;
     println!("Listening on {}", ip_address);
-    server.listen(listener, logs_directory)
+    server.listen(listener, log_directory)
 }
