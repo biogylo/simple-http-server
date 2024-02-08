@@ -31,11 +31,12 @@ echo_and_run $SSH_COMMAND \
   "
   /bin/echo '
 #!/bin/bash
-$REMOTE_DEPLOYED_BINARY_LOCATION \
+$REMOTE_DEPLOYED_BINARY_LOCATION\
   --public-directory $REMOTE_PUBLIC_DIRECTORY \
   --listen-port $SERVER_LISTEN_PORT \
-  --log-directory $SERVER_PRIVATE_DIRECTORY/logs
+  --log-directory $REMOTE_PRIVATE_DIRECTORY/logs
 ' | /usr/bin/tee $REMOTE_DAEMON_LOCATION
+
 /bin/chmod 755 $REMOTE_DAEMON_LOCATION
 "
 
